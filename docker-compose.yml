@@ -1,0 +1,47 @@
+version: "3"
+services:
+  shinobi:
+    container_name: Shinobi
+    image: registry.gitlab.com/shinobi-systems/shinobi:dev
+    domainname: ${DOMAIN_NAME}
+    restart: unless-stopped
+
+    networks:
+      - proxy
+
+    environment:
+       - PLUGIN_KEYS={}
+       - SSL_ENABLED=false
+
+    volumes:
+       - ./data/config:/config
+       - ./data/customAutoLoad:/home/Shinobi/libs/customAutoLoad
+       - ./data/database:/var/lib/mysql
+       - ./data/videos:/home/Shinobi/videos
+       - ./data/plugins:/home/Shinobi/plugins
+       - /dev/shm/Shinobi/streams:/dev/shm/streams
+
+    ports:
+       - 9020:8080
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      ## HTTP Routers
+      - "traefik.http.routers.shinobi-secure.entrypoints=websecure"
+      - "traefik.http.routers.shinobi-secure.rule=Host(`$DOMAIN_NAME`)"
+      - "traefik.http.routers.shinobi-secure.service=shinobi"
+      - "traefik.http.routers.shinobi-secure.tls.certresolver=letsencrypt"
+
+        ## Middlewares
+      #- "traefik.http.middlewares=secureHeaders@file"
+      - "traefik.http.middlewares.custom.headers.sslredirect=true"
+      ## HTTP Services
+      - "traefik.http.services.shinobi.loadbalancer.server.port=8080"
+
+networks:
+  proxy:
+    name: proxy
+    external: true
+
